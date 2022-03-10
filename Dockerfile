@@ -6,7 +6,7 @@ ARG BUILD_DATE
 LABEL org.opencontainers.image.created=$BUILD_DATE
 LABEL org.opencontainers.image.authors="Martin E. Gutierrez <esteban@megutierrez.site>"
 LABEL org.opencontainers.image.documentation="https://develop.prontus.cl/prontus_desarrollo_v12_0/site/edic/base/port/inicio.html"
-LABEL org.opencontainers.image.source="https://www.prontus.cl/cms/releases/descargas - https://www.prontus.cl/packages/prontus.zip"
+LABEL org.opencontainers.image.source="https://www.prontus.cl/packages/prontus.zip"
 LABEL org.opencontainers.image.version="0.0.1"
 LABEL org.opencontainers.image.title="Prontus 12"
 LABEL org.opencontainers.image.url="https://www.prontus.cl/cms/acerca-de-prontus#"
@@ -109,12 +109,12 @@ RUN apt-get update && \
       unzip \
       wget \
     && rm -rf /var/lib/apt/lists/* && apt-get clean && \
-       ln -s ../mods-available/proxy.load  /etc/apache2/mods-enabled/proxy.load && \
-       ln -s ../mods-available/proxy.conf  /etc/apache2/mods-enabled/proxy.conf && \
-       ln -s ../mods-available/proxy_fcgi.load  /etc/apache2/mods-enabled/proxy_fcgi.load &&\
-       ln -s ../mods-available/cgi.load  /etc/apache2/mods-enabled/cgi.load && \
-       ln -s ../mods-available/rewrite.load  /etc/apache2/mods-enabled/rewrite.load &&\
-       ln -s ../mods-available/expires.load  /etc/apache2/mods-enabled/expires.load \
+        ln -s ../mods-available/proxy.load  /etc/apache2/mods-enabled/proxy.load && \
+        ln -s ../mods-available/proxy.conf  /etc/apache2/mods-enabled/proxy.conf && \
+        ln -s ../mods-available/proxy_fcgi.load  /etc/apache2/mods-enabled/proxy_fcgi.load &&\
+        ln -s ../mods-available/cgi.load  /etc/apache2/mods-enabled/cgi.load && \
+        ln -s ../mods-available/rewrite.load  /etc/apache2/mods-enabled/rewrite.load &&\
+        ln -s ../mods-available/expires.load  /etc/apache2/mods-enabled/expires.load \
     && install -d -o www-data -g www-data /var/wlog/prontus
 
 
@@ -152,6 +152,8 @@ RUN mkdir -p /etc/apache2/global && \
     rm -rf /tmp/prontus
 
 WORKDIR /var/www/prontus/web
+
+VOLUME ["/etc/apache2"]
 
 CMD ["/usr/sbin/apachectl", "-DFOREGROUND"]
 
