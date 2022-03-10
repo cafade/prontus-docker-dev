@@ -1,0 +1,157 @@
+# syntax=docker/dockerfile:1
+FROM  debian:buster-slim as builder
+
+ARG BUILD_DATE
+
+LABEL org.opencontainers.image.created=$BUILD_DATE
+LABEL org.opencontainers.image.authors="Martin E. Gutierrez <esteban@megutierrez.site>"
+LABEL org.opencontainers.image.documentation="https://develop.prontus.cl/prontus_desarrollo_v12_0/site/edic/base/port/inicio.html"
+LABEL org.opencontainers.image.source="https://www.prontus.cl/cms/releases/descargas - https://www.prontus.cl/packages/prontus.zip"
+LABEL org.opencontainers.image.version="0.0.1"
+LABEL org.opencontainers.image.title="Prontus 12"
+LABEL org.opencontainers.image.url="https://www.prontus.cl/cms/acerca-de-prontus#"
+LABEL org.opencontainers.image.description="Debian 10 based image of Prontus v12.1"
+
+# Setup apt package cache proxy for local dev env
+RUN apt-get update && apt-get install -y iproute2
+RUN (echo "Acquire::http::Proxy \"http://$(ip route|awk '/default/ { print $3 }'):8123\";" > /etc/apt/apt.conf.d/30proxy)
+# RUN (echo "Acquire::http::Proxy \"http://$(route -n | awk '/^0.0.0.0/ {print $2}'):8123\";" > /etc/apt/apt.conf.d/30proxy) && \
+#     (echo "Acquire::http::Proxy::ppa.launchpad.net DIRECT;" >> /etc/apt/apt.conf.d/30proxy)
+
+    # apt-get install -y --no-install-recommends \
+# Install apache2, php 7.3, and software dependencies
+RUN apt-get update && \
+    apt-get install -y \
+      aufs-tools \
+      apache2 \
+      aspell \
+      aspell-en \
+      curl \
+      enchant \
+      ffmpeg \
+      hunspell-en-us \
+      libalgorithm-diff-perl \
+      libalgorithm-diff-xs-perl \
+      libalgorithm-merge-perl \
+      libapache2-mod-perl2 \
+      libaspell15 \
+      libauthen-sasl-perl \
+      libcgi-fast-perl \
+      libcgi-pm-perl \
+      libcpanel-json-xs-perl \
+      libcrypt-eksblowfish-perl \
+      libcrypt-eksblowfish-perl \
+      libcrypt-jwt-perl \
+      libdbd-mysql-perl \
+      libdbi-perl \
+      libdigest-sha-perl \
+      libdpkg-perl \
+      libemail-mime-perl \
+      libemail-sender-perl \
+      libemail-sender-perl \
+      libemail-simple-perl \
+      libenchant1c2a \
+      libencode-locale-perl \
+      liberror-perl \
+      libfcgi-perl \
+      libfile-fcntllock-perl \
+      libfile-libmagic-perl \
+      libfile-listing-perl \
+      libfont-afm-perl \
+      libgd-perl \
+      libhtml-format-perl \
+      libhtml-form-perl \
+      libhtml-parser-perl \
+      libhtml-tagset-perl \
+      libhtml-template-perl \
+      libhtml-tree-perl \
+      libhttp-cookies-perl \
+      libhttp-daemon-perl \
+      libhttp-date-perl \
+      libhttp-message-perl \
+      libhttp-negotiate-perl \
+      libhunspell-1.7-0 \
+      libimage-exiftool-perl \
+      libio-all-perl \
+      libio-html-perl \
+      libio-socket-ssl-perl \
+      libjson-perl \
+      liblocale-gettext-perl \
+      liblockfile-simple-perl \
+      liblwp-mediatypes-perl \
+      liblwp-online-perl \
+      liblwp-protocol-https-perl \
+      libmailtools-perl \
+      libnet-amazon-s3-perl \
+      libnet-dns-perl \
+      libnet-http-perl \
+      libnet-smtp-ssl-perl \
+      libnet-ssleay-perl \
+      libterm-readkey-perl \
+      libtext-charwidth-perl \
+      libtext-iconv-perl \
+      libtext-unidecode-perl \
+      libtext-wrapi18n-perl \
+      libtimedate-perl \
+      liburi-perl \
+      libwww-perl \
+      libwww-robotrules-perl \
+      libx264-155 \
+      mc \
+      nano \
+      net-tools \
+      perl-openssl-defaults \
+      php7.3-cli \
+      php7.3-common \
+      php7.3-enchant \
+      php7.3-fpm \
+      php7.3-json \
+      unzip \
+      wget \
+    && rm -rf /var/lib/apt/lists/* && apt-get clean && \
+       ln -s ../mods-available/proxy.load  /etc/apache2/mods-enabled/proxy.load && \
+       ln -s ../mods-available/proxy.conf  /etc/apache2/mods-enabled/proxy.conf && \
+       ln -s ../mods-available/proxy_fcgi.load  /etc/apache2/mods-enabled/proxy_fcgi.load &&\
+       ln -s ../mods-available/cgi.load  /etc/apache2/mods-enabled/cgi.load && \
+       ln -s ../mods-available/rewrite.load  /etc/apache2/mods-enabled/rewrite.load &&\
+       ln -s ../mods-available/expires.load  /etc/apache2/mods-enabled/expires.load \
+    && install -d -o www-data -g www-data /var/wlog/prontus
+
+
+# Expose default port 80
+EXPOSE 80
+
+# Download and install the application
+FROM builder AS installer
+
+RUN mkdir -p /tmp/prontus && \
+    cd /tmp/prontus && \
+    wget -O ./prontus.zip \
+    "https://www.prontus.cl/packages/prontus.zip" && \
+    unzip ./prontus.zip
+
+# COPY prontus.zip /tmp/prontus/
+# 
+# RUN cd /tmp/prontus && \
+#     unzip ./prontus.zip
+
+
+# Copy apache2 configuration
+# and delete existing contents of sites-enabled
+# Copy www contents and www-data as the owner
+WORKDIR /tmp/prontus
+
+RUN mkdir -p /etc/apache2/global && \
+    mkdir -p /var/www/prontus/web && \
+    rm -rf /etc/apache2/sites-enabled/* && \
+    cp ./config/apache/mods-available/mpm_event.conf /etc/apache2/mods-available/ && \
+    cp -r ./config/apache/sites-enabled/* /etc/apache2/sites-enabled/ && \
+    cp -r ./config/apache/global/* /etc/apache2/global/ && \
+    cp -r ./web /var/www/prontus && \
+    chown -R www-data:www-data /var/www/prontus/web && \
+    rm -rf /tmp/prontus
+
+WORKDIR /var/www/prontus/web
+
+CMD ["/usr/sbin/apachectl", "-DFOREGROUND"]
+
